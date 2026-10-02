@@ -440,7 +440,11 @@ void loadNetConfig() {
   apCfg.channel = prefsNet.getUChar("ap_ch", 1);
   apCfg.hidden  = prefsNet.getBool("ap_hidden", false);
   apCfg.maxConn = prefsNet.getUChar("ap_maxc", 4);
-  apCfg.enabled = prefsNet.getBool("ap_en", false);
+  // Default true: auf einem frisch geflashten Geraet (leeres NVS, noch kein gespeichertes
+  // WLAN) MUSS der SoftAP aktiv sein, sonst waere das Dashboard nach dem allerersten
+  // Boot ueberhaupt nicht erreichbar. Sobald der Nutzer den AP einmal bewusst ueber die
+  // Weboberflaeche deaktiviert, wird dieser Wert in der NVS gespeichert und bleibt es.
+  apCfg.enabled = prefsNet.getBool("ap_en", true);
   wifiModeSel   = prefsNet.getUChar("mode", 0);
   prefsNet.end();
 }

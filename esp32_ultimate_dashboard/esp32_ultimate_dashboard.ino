@@ -81,10 +81,27 @@ class JsonWriter;
 #include <BLEAdvertising.h>
 #include <BLEBeacon.h>
 // BLEAdvertising.h zieht esp_gap_ble_api.h (Definition von ADV_TYPE_NONCONN_IND etc.)
-// nur transitiv und abhaengig von CONFIG_BLUEDROID_ENABLED nach. Je nach Core-Version/
-// Chip-Variante (z.B. ESP32-S3) kann das variieren - daher hier direkt und explizit
-// einbinden, damit die Advertising-Typ-Konstanten immer sicher verfuegbar sind.
+// nur transitiv und abhaengig von CONFIG_BLUEDROID_ENABLED nach, daher hier zusaetzlich
+// direkt einbinden. __has_include() schuetzt dabei vor einer kryptischen "file not
+// found"-Fehlermeldung, falls statt der im ESP32-Arduino-Core eingebauten klassischen
+// "BLE"-Bibliothek (Bluedroid, von Neil Kolban) versehentlich die separat installierbare
+// Drittanbieter-Bibliothek "NimBLE-Arduino" verwendet wird. Diese verwendet absichtlich
+// dieselben Klassennamen (BLEDevice, BLEAdvertising, BLEBeacon, ...), basiert intern aber
+// auf einem komplett anderen, eigenstaendigen BLE-Stack OHNE Bluedroid/esp_gap_ble_api.h -
+// die beiden Bibliotheken sind trotz gleicher Namen NICHT kompatibel zueinander.
+#if __has_include(<esp_gap_ble_api.h>)
 #include <esp_gap_ble_api.h>
+#else
+#error \
+  "esp_gap_ble_api.h wurde nicht gefunden. Das bedeutet fast immer, dass statt der " \
+  "im ESP32-Arduino-Core eingebauten BLE-Bibliothek (Bluedroid) eine zusaetzlich " \
+  "installierte 'NimBLE-Arduino'-Bibliothek verwendet wird - diese ist mit diesem " \
+  "Sketch NICHT kompatibel. Bitte in der Arduino-IDE unter Werkzeuge -> " \
+  "Bibliotheken verwalten (bzw. im Ordner Dokumente/Arduino/libraries) nach " \
+  "'NimBLE-Arduino' suchen und diese Bibliothek entfernen bzw. aus dem libraries-" \
+  "Ordner herausnehmen, damit #include <BLEDevice.h> wieder auf die im ESP32-Core " \
+  "eingebaute Bibliothek 'BLE' (Autor: Neil Kolban) auflöst."
+#endif
 
 // Groesserer Stack fuer den Arduino-Loop-Task, da der Webserver synchron aus loop()
 // bedient wird und dabei zeitweise groessere JSON-Puffer auf dem Stack referenziert.

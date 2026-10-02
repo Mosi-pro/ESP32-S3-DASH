@@ -2211,15 +2211,28 @@ function closeModal(){ qs('modalBg').classList.remove('show'); modalCb=null; }
 qs('modalConfirmBtn').addEventListener('click', ()=>{ const cb=modalCb; closeModal(); if(cb) cb(); });
 
 // ---- Generischer API-Helfer (form-urlencoded POST) --------------------------
+// Antworten, die keine 2xx-JSON-Antwort sind (z.B. 401 Basic-Auth-Herausforderung,
+// die als reiner HTML/Text-Koerper kommt), werden hier VOR dem JSON-Parsing klar
+// erkannt und gemeldet - sonst wuerde jeder r.json()-Aufruf mit einer kryptischen
+// "Unexpected token..."-Meldung fehlschlagen, egal was die eigentliche Ursache ist.
+function handleApiResponse(r){
+  if(r.status === 401){
+    throw new Error('Nicht angemeldet (401) - bitte Seite neu laden (F5) und beim Login-Fenster Benutzername/Passwort eingeben.');
+  }
+  if(!r.ok){
+    throw new Error('Serverfehler (HTTP ' + r.status + ')');
+  }
+  return r.json().catch(()=>{ throw new Error('Antwort war kein gueltiges JSON (HTTP ' + r.status + ')'); });
+}
 function api(path, params, cb){
   const body = new URLSearchParams(params||{}).toString();
   fetch(path, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body})
-    .then(r=>r.json())
+    .then(handleApiResponse)
     .then(d=>{ if(d.message) toast(d.message, d.ok===false?'bad':'good'); if(cb) cb(d); })
-    .catch(e=>toast('Netzwerkfehler: '+e,'bad'));
+    .catch(e=>toast(e.message || ('Netzwerkfehler: '+e), 'bad'));
 }
 function apiGet(path, cb){
-  fetch(path).then(r=>r.json()).then(cb).catch(e=>toast('Netzwerkfehler: '+e,'bad'));
+  fetch(path).then(handleApiResponse).then(cb).catch(e=>toast(e.message || ('Netzwerkfehler: '+e), 'bad'));
 }
 
 // ---- Sparkline-Diagramme (Canvas, keine Bibliothek) -------------------------

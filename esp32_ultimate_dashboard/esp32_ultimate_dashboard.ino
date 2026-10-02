@@ -903,7 +903,7 @@ void buildWifiScanJson(JsonWriter &j) {
 
     for (int k = 0; k < cnt; k++) {
       int i = order[k];
-      j.comma(); j.beginObj();
+      j.beginObj();
       String ss = WiFi.SSID(i);
       bool hidden = ss.length() == 0;
       j.str("ssid", hidden ? String("(versteckt)") : ss);
@@ -976,7 +976,7 @@ void buildApJson(JsonWriter &j) {
       wifi_sta_mac_ip_list_t ipList;
       bool haveIp = esp_wifi_ap_get_sta_list_with_ip(&staList, &ipList) == ESP_OK;
       for (int i = 0; i < staList.num; i++) {
-        j.comma(); j.beginObj();
+        j.beginObj();
         char macStr[18];
         uint8_t* mm = staList.sta[i].mac;
         snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X", mm[0], mm[1], mm[2], mm[3], mm[4], mm[5]);
@@ -1118,7 +1118,7 @@ void buildWifiBeaconsJson(JsonWriter &j) {
   j.str("lastError", wifiBeaconLastError);
   j.beginArr("beacons");
   for (uint8_t i = 0; i < wifiBeaconCount; i++) {
-    j.comma(); j.beginObj();
+    j.beginObj();
     j.num("index", i);
     j.str("name", wifiBeacons[i].name);
     j.str("ssid", wifiBeacons[i].ssid);
@@ -1243,7 +1243,7 @@ void buildBleJson(JsonWriter &j) {
   j.beginArr("devices");
   for (uint8_t i = 0; i < bleDeviceCount; i++) {
     BleDeviceInfo &d = bleDevices[i];
-    j.comma(); j.beginObj();
+    j.beginObj();
     j.str("addr", d.addr);
     j.boolean("hasName", d.hasName);
     j.str("name", d.hasName ? d.name : "");
@@ -1376,7 +1376,7 @@ void buildBleBeaconsJson(JsonWriter &j) {
   j.str("lastError", bleBeaconLastError);
   j.beginArr("beacons");
   for (uint8_t i = 0; i < bleBeaconCount; i++) {
-    j.comma(); j.beginObj();
+    j.beginObj();
     j.num("index", i);
     j.str("name", bleBeacons[i].name);
     j.str("uuid", bleBeacons[i].uuid);
@@ -3058,7 +3058,7 @@ void handleApiLogsGet() {
   for (uint16_t i = 0; i < logCount; i++) {
     uint16_t idx = (start + i) % MAX_LOG_ENTRIES;
     if (logBuf[idx].level < minLvl) continue;
-    j.comma(); j.beginObj();
+    j.beginObj();
     j.numu("t", logBuf[idx].t);
     j.num("level", logBuf[idx].level);
     j.str("levelName", levelName(logBuf[idx].level));

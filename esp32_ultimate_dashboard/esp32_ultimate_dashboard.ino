@@ -80,6 +80,11 @@ class JsonWriter;
 #include <BLEAdvertisedDevice.h>
 #include <BLEAdvertising.h>
 #include <BLEBeacon.h>
+// BLEAdvertising.h zieht esp_gap_ble_api.h (Definition von ADV_TYPE_NONCONN_IND etc.)
+// nur transitiv und abhaengig von CONFIG_BLUEDROID_ENABLED nach. Je nach Core-Version/
+// Chip-Variante (z.B. ESP32-S3) kann das variieren - daher hier direkt und explizit
+// einbinden, damit die Advertising-Typ-Konstanten immer sicher verfuegbar sind.
+#include <esp_gap_ble_api.h>
 
 // Groesserer Stack fuer den Arduino-Loop-Task, da der Webserver synchron aus loop()
 // bedient wird und dabei zeitweise groessere JSON-Puffer auf dem Stack referenziert.

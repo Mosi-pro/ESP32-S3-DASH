@@ -80,27 +80,27 @@ class JsonWriter;
 #include <BLEAdvertisedDevice.h>
 #include <BLEAdvertising.h>
 #include <BLEBeacon.h>
-// BLEAdvertising.h zieht esp_gap_ble_api.h (Definition von ADV_TYPE_NONCONN_IND etc.)
-// nur transitiv und abhaengig von CONFIG_BLUEDROID_ENABLED nach, daher hier zusaetzlich
-// direkt einbinden. __has_include() schuetzt dabei vor einer kryptischen "file not
-// found"-Fehlermeldung, falls statt der im ESP32-Arduino-Core eingebauten klassischen
-// "BLE"-Bibliothek (Bluedroid, von Neil Kolban) versehentlich die separat installierbare
-// Drittanbieter-Bibliothek "NimBLE-Arduino" verwendet wird. Diese verwendet absichtlich
-// dieselben Klassennamen (BLEDevice, BLEAdvertising, BLEBeacon, ...), basiert intern aber
-// auf einem komplett anderen, eigenstaendigen BLE-Stack OHNE Bluedroid/esp_gap_ble_api.h -
-// die beiden Bibliotheken sind trotz gleicher Namen NICHT kompatibel zueinander.
+
+// Portabler Advertising-Typ "Non-connectable undirected" (Bluetooth-Core-Spezifikation,
+// Rohwert 0x03) fuer den iBeacon-Modus im BLE-Beacon-Manager:
+//
+// Seit Anfang 2025 (ca. ESP32-Arduino-Core 3.2.x) wurde die im Core eingebaute "BLE"-
+// Bibliothek vereinheitlicht und kann wahlweise auf dem klassischen Bluedroid-Stack oder
+// auf NimBLE laufen (je nach Core-Version/Zielchip/Boardmenue-Standardwert). Je nachdem,
+// welcher Stack aktiv ist, aendert sich sowohl die Verfuegbarkeit von esp_gap_ble_api.h
+// als auch der von BLEAdvertising::setAdvertisementType() erwartete Parametertyp:
+//   - Bluedroid (aeltere Cores, z.B. 3.1.x): Methode erwartet den Enum-Typ
+//     esp_ble_adv_type_t aus esp_gap_ble_api.h (dort: ADV_TYPE_NONCONN_IND = 0x03).
+//   - Neuere, vereinheitlichte Bibliothek (ab ca. 3.2.x, unabhaengig vom aktiven Stack):
+//     Methode erwartet direkt ein uint8_t - esp_gap_ble_api.h existiert dann je nach
+//     Zielchip/Boardkonfiguration unter Umstaenden gar nicht mehr im SDK.
+// __has_include() entscheidet hier automatisch, welcher Fall vorliegt, damit derselbe
+// Sketch unveraendert gegen beide Bibliotheksvarianten kompiliert.
 #if __has_include(<esp_gap_ble_api.h>)
 #include <esp_gap_ble_api.h>
+static const esp_ble_adv_type_t kBeaconAdvType = ADV_TYPE_NONCONN_IND;
 #else
-#error \
-  "esp_gap_ble_api.h wurde nicht gefunden. Das bedeutet fast immer, dass statt der " \
-  "im ESP32-Arduino-Core eingebauten BLE-Bibliothek (Bluedroid) eine zusaetzlich " \
-  "installierte 'NimBLE-Arduino'-Bibliothek verwendet wird - diese ist mit diesem " \
-  "Sketch NICHT kompatibel. Bitte in der Arduino-IDE unter Werkzeuge -> " \
-  "Bibliotheken verwalten (bzw. im Ordner Dokumente/Arduino/libraries) nach " \
-  "'NimBLE-Arduino' suchen und diese Bibliothek entfernen bzw. aus dem libraries-" \
-  "Ordner herausnehmen, damit #include <BLEDevice.h> wieder auf die im ESP32-Core " \
-  "eingebaute Bibliothek 'BLE' (Autor: Neil Kolban) auflöst."
+static const uint8_t kBeaconAdvType = 0x03;  // ADV_TYPE_NONCONN_IND laut BLE-Spezifikation
 #endif
 
 // Groesserer Stack fuer den Arduino-Loop-Task, da der Webserver synchron aus loop()
@@ -1288,7 +1288,7 @@ bool bbApplyIndex(int idx) {
 
   pAdv->setAdvertisementData(advData);
   pAdv->setScanResponseData(scanResp);
-  pAdv->setAdvertisementType(ADV_TYPE_NONCONN_IND);
+  pAdv->setAdvertisementType(kBeaconAdvType);
   pAdv->setMinInterval(b.advIntervalMs);
   pAdv->setMaxInterval(b.advIntervalMs + 20);
   BLEDevice::setPower((esp_power_level_t)constrain((int)((b.txPower + 12) / 3 + 0), 0, 7), ESP_BLE_PWR_TYPE_ADV);
@@ -1398,9 +1398,11 @@ static void onPingSuccessCb(esp_ping_handle_t hdl, void *args) {
   esp_ping_get_profile(hdl, ESP_PING_PROF_TTL, &ttl, sizeof(ttl));
   esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
   esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsedMs, sizeof(elapsedMs));
-  pingState.received++;
+  // Zuweisung statt ++/+= auf volatile-Membern (seit C++20 fuer Compound-Operationen
+  // auf volatile deprecatet; einfache Zuweisungen bleiben unproblematisch).
+  pingState.received = pingState.received + 1;
   pingState.lastMs = elapsedMs;
-  pingState.sumMs += elapsedMs;
+  pingState.sumMs = pingState.sumMs + elapsedMs;
   if (pingState.received == 1 || elapsedMs < pingState.minMs) pingState.minMs = elapsedMs;
   if (elapsedMs > pingState.maxMs) pingState.maxMs = elapsedMs;
   pingState.avgMs = pingState.sumMs / (float)pingState.received;
